@@ -1,0 +1,93 @@
+---
+title: "Paginate through large result sets with Easy Edgar"
+description: "Easy Edgar uses offset-based pagination on all list endpoints. Learn how to navigate large result sets using page and limit parameters."
+---
+
+List endpoints in Easy Edgar return results in pages. All paginated responses share the same envelope shape, and all use the same two query parameters to control which page you receive. Understanding pagination lets you efficiently retrieve large datasets — like a company's complete filing history — without loading everything at once.
+
+## How pagination works
+
+Easy Edgar uses **offset-based pagination**. Two query parameters control it:
+
+| Parameter | Default | Allowed values | Description |
+|---|---|---|---|
+| `page` | `1` | `>= 1` | The page number to retrieve (1-based) |
+| `limit` | `20` | `1–100` | Number of results per page |
+
+Every paginated response has the same shape:
+
+```json
+{
+  "results": [...],
+  "total": 142,
+  "page": 1,
+  "pages": 8
+}
+```
+
+| Field | Description |
+|---|---|
+| `results` | Array of items for the current page |
+| `total` | Total number of matching items across all pages |
+| `page` | The current page number |
+| `pages` | Total number of pages, calculated as `ceil(total / limit)` |
+
+You've reached the last page when `page == pages`, or when `results` is empty.
+
+## Paginated endpoints
+
+Pagination applies to these endpoints:
+
+- `GET /v1/companies/{identifier}/filings` — a company's filing history
+- `GET /v1/filings/{accession_number}/documents` — documents and exhibits in a filing
+- `GET /v1/filings/{accession_number}/items` — extracted item sections from a filing
+
+## Walking through pages
+
+The following example retrieves Apple's 10-K filings two pages at a time.
+
+**Page 1:**
+
+```bash
+curl "https://api.easy-edgar.com/v1/companies/AAPL/filings?form_type=10-K&page=1&limit=20" \
+  -H "Authorization: Bearer hv_live_your_key_here"
+```
+
+```json
+{
+  "results": [
+    {
+      "accession_number": "0000320193-23-000106",
+      "form_type": "10-K",
+      "filed_at": "2023-11-03",
+      "period_of_report": "2023-09-30",
+      "primary_document": "aapl-20230930.htm"
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "pages": 3
+}
+```
+
+**Page 2:**
+
+```bash
+curl "https://api.easy-edgar.com/v1/companies/AAPL/filings?form_type=10-K&page=2&limit=20" \
+  -H "Authorization: Bearer hv_live_your_key_here"
+```
+
+```json
+{
+  "results": [...],
+  "total": 42,
+  "page": 2,
+  "pages": 3
+}
+```
+
+The `pages` field tells you how many requests you need. In this case, `pages: 3` means you'll make three requests (page 1, 2, and 3) to collect all 42 filings.
+
+<Tip>
+  Set `limit=100` to minimize the number of requests when you need a complete dataset. With `limit=100`, a company with 142 total filings requires only 2 requests (`pages: 2`) instead of 8 at the default limit of 20.
+</Tip>

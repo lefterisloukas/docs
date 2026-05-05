@@ -1,0 +1,91 @@
+---
+title: "Companies, tickers, and CIK identifiers in Easy Edgar"
+description: "Companies are identified by ticker or CIK. Learn how Easy Edgar resolves identifiers and what metadata is available for each company."
+---
+
+Every resource in Easy Edgar starts with a company. A company represents any SEC-registered entity — a publicly traded corporation, fund, or other filer — that has submitted documents through SEC EDGAR. Each company has a stable numeric identifier called a CIK (Central Index Key) assigned by the SEC, and Easy Edgar uses this as the canonical anchor for all company data.
+
+## Identifying a company
+
+You can look up a company using either of two identifier types in any endpoint that accepts `{identifier}`:
+
+- **Ticker symbol** — the exchange ticker, case-insensitive. For example, `AAPL`, `aapl`, and `Aapl` all resolve to the same company.
+- **CIK** — the SEC-assigned numeric identifier. You can pass it zero-padded (`0000320193`) or unpadded (`320193`); Easy Edgar normalizes both.
+
+```bash
+# By ticker
+GET /v1/companies/AAPL
+
+# By padded CIK
+GET /v1/companies/0000320193
+
+# By unpadded CIK — resolves to the same company
+GET /v1/companies/320193
+```
+
+<Tip>
+  Use tickers for interactive or exploratory workflows. Use CIKs in production pipelines where you want a stable, exchange-independent identifier that never changes when a company rebrands or moves exchanges.
+</Tip>
+
+## CIK format in responses
+
+Regardless of how you identify a company in a request, Easy Edgar always returns the CIK as a **10-digit zero-padded string** in every response. This matches the SEC's canonical format and makes string comparison safe without numeric parsing.
+
+```json
+{
+  "cik": "0000320193"
+}
+```
+
+## Company metadata
+
+A successful lookup returns a `CompanyResponse` object with the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `cik` | string | 10-digit zero-padded CIK |
+| `name` | string | Legal name as registered with the SEC |
+| `tickers` | string[] | All known ticker symbols for this company |
+| `sic_code` | string | Standard Industrial Classification code |
+| `industry` | string | SIC-based industry description |
+| `fiscal_year_end` | string | Fiscal year end as `MMDD` (e.g. `"0928"` for September 28) |
+| `state_of_incorporation` | string | Two-letter state code, or empty string if not on file |
+| `business_address` | object \| null | Primary business address |
+| `mailing_address` | object \| null | Mailing address, if different from business address |
+
+Each address object contains `street`, `city`, `state`, and `zip_code` fields (all strings, defaulting to `""`).
+
+## Sample response
+
+```json
+{
+  "cik": "0000320193",
+  "name": "Apple Inc.",
+  "tickers": ["AAPL"],
+  "sic_code": "3571",
+  "industry": "Electronic Computers",
+  "fiscal_year_end": "0928",
+  "state_of_incorporation": "CA",
+  "business_address": {
+    "street": "One Apple Park Way",
+    "city": "Cupertino",
+    "state": "CA",
+    "zip_code": "95014"
+  },
+  "mailing_address": null
+}
+```
+
+<Note>
+  Either or both address fields may be `null` if the company has not filed address information with the SEC. Always check for `null` before reading address properties.
+</Note>
+
+## What comes next
+
+Once you have a company's CIK or confirmed identifier, you can retrieve its filings:
+
+```bash
+GET /v1/companies/AAPL/filings?form_type=10-K&limit=5
+```
+
+See [Filings and accession numbers explained](/concepts/filings) for a full breakdown of the filing resource and how to navigate filing documents.

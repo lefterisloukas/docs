@@ -1,0 +1,97 @@
+---
+title: "GET /v1/filings/{accession_number}/documents/{document_id}"
+sidebarTitle: "Get Document"
+description: "Fetch the raw content of a specific filing document. Returns HTML or plain text. Use the document_id from the list-documents endpoint."
+---
+
+Use this endpoint to retrieve the raw content of any document attached to an SEC filing. You can receive the document in its native format (typically HTML) or request plain text with all HTML stripped — useful when you want to pass the content to a language model or text processing pipeline.
+
+<Note>
+  This is the only Easy Edgar endpoint that does not return JSON. The response body is raw HTML or plain text, and the `Content-Type` header reflects the format you requested.
+</Note>
+
+## Endpoint
+
+```
+GET /v1/filings/{accession_number}/documents/{document_id}
+```
+
+## Authentication
+
+All requests require a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+A missing or invalid key returns `401 unauthorized`.
+
+## Path parameters
+
+<ParamField path="accession_number" type="string" required>
+  The SEC accession number with dashes, in the format `XXXXXXXXXX-XX-XXXXXX`. For example, `0000320193-23-000106`.
+</ParamField>
+
+<ParamField path="document_id" type="string" required>
+  The document filename from the filing's document listing (e.g. `aapl-20230930.htm`). Nested paths with slashes are supported for documents organized into subdirectories within the filing.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="format" type="string" default="raw">
+  Controls the format of the returned content:
+  - `raw` — returns the document in its native content type, which is typically `text/html`.
+  - `text` — strips all HTML tags and returns `text/plain`.
+
+  Any value other than `raw` or `text` returns a `422 validation_error`.
+</ParamField>
+
+## Response
+
+A successful request returns a `200` status with a raw response body. The `Content-Type` header is:
+
+- `text/html` when `format=raw`
+- `text/plain` when `format=text`
+
+The body is **not** wrapped in a JSON envelope.
+
+## Examples
+
+<CodeGroup>
+
+```bash Fetch raw HTML
+curl --request GET \
+  --url "https://api.easy-edgar.com/v1/filings/0000320193-23-000106/documents/aapl-20230930.htm" \
+  --header "Authorization: Bearer hv_live_<your_key>"
+```
+
+```bash Fetch plain text
+curl --request GET \
+  --url "https://api.easy-edgar.com/v1/filings/0000320193-23-000106/documents/aapl-20230930.htm?format=text" \
+  --header "Authorization: Bearer hv_live_<your_key>"
+```
+
+</CodeGroup>
+
+The `raw` response returns HTML exactly as stored in the SEC EDGAR filing archive. The `text` response strips all markup and returns only the visible text content — suitable for search indexing or passing directly to a language model.
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401` | `unauthorized` | Missing or invalid Bearer token. |
+| `404` | `not_found` | No filing or document found for the given identifiers. |
+| `422` | `validation_error` | The `format` parameter has an unsupported value, or the accession number is malformed. |
+| `502` | `upstream_error` | The SEC EDGAR archive could not be reached or returned an error. |
+
+Error responses use the standard JSON envelope regardless of the requested `format`:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Document not found.",
+    "details": {}
+  }
+}
+```

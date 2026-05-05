@@ -1,0 +1,50 @@
+---
+title: "Easy Edgar: item-level SEC EDGAR data via REST API"
+description: "Easy Edgar gives you item-level text from SEC filings back to 1993. Look up companies, retrieve filings, and extract named sections with one call."
+---
+
+Easy Edgar is a REST API for SEC EDGAR financial data. It lets you look up any public company, browse their filings, and extract clean text from specific sections — like Risk Factors or MD&A — from 10-K, 10-Q, and 8-K forms going back to 1993. No parsing HTML dumps, no inconsistent formatting, no fighting with the raw SEC archives.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Make your first API call in minutes — look up a company, retrieve filings, and extract an item.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how to authenticate every request with your Bearer API key.
+  </Card>
+  <Card title="Item Extraction" icon="file-lines" href="/concepts/item-extraction">
+    Understand how Easy Edgar extracts named sections from 10-K, 10-Q, and 8-K filings.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Full reference for every endpoint — parameters, response shapes, and error codes.
+  </Card>
+</CardGroup>
+
+## Get started in 3 steps
+
+<Steps>
+  <Step title="Get your API key">
+    Sign up and retrieve your Bearer token from your account dashboard. Your key starts with `hv_live_`.
+  </Step>
+  <Step title="Look up a company">
+    Pass a ticker or CIK to `GET /v1/companies/{identifier}` to retrieve the company's profile and SEC metadata.
+  </Step>
+  <Step title="Extract filing items">
+    Use `GET /v1/filings/{accession_number}/items/{item_key}` to pull a specific section — like `item_1a` for Risk Factors — from any supported filing.
+  </Step>
+</Steps>
+
+## Why Easy Edgar?
+
+The SEC publishes raw filing data publicly, but working with it is painful. Filings are HTML and text dumps with inconsistent formatting — especially pre-2009 — and there's no endpoint that cleanly returns "give me Item 7 from Apple's 2005 10-K."
+
+Easy Edgar solves that. Its key differentiator is **item-level text extraction going back to 1993**, including the messy historical filings that commercial APIs either skip or charge heavily to access.
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book-open" href="/concepts/companies">
+    Learn about companies, filings, accession numbers, and item keys.
+  </Card>
+  <Card title="Guides" icon="map" href="/guides/fetch-company">
+    Step-by-step walkthroughs for the most common use cases.
+  </Card>
+</CardGroup>

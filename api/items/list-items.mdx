@@ -1,0 +1,152 @@
+---
+title: "Extract all filing items — GET /v1/filings/{id}/items"
+sidebarTitle: "List Items"
+description: "Extract all named item sections from a 10-K, 10-Q, or 8-K filing. Returns ItemResponse objects with cleaned text, char ranges, and word counts."
+---
+
+Use this endpoint to extract every named section from a supported SEC filing in a single request. Each result contains the item's cleaned text, its title, its character offsets in the source document, and the extraction method used. This endpoint is only available for 10-K, 10-Q, and 8-K filings.
+
+## Endpoint
+
+```
+GET /v1/filings/{accession_number}/items
+```
+
+## Authentication
+
+All requests require a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+A missing or invalid key returns `401 unauthorized`.
+
+## Path parameters
+
+<ParamField path="accession_number" type="string" required>
+  The SEC accession number with dashes, in the format `XXXXXXXXXX-XX-XXXXXX`. For example, `0000320193-23-000106`.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="parser" type="string">
+  Forces a specific extraction engine. Accepts `edgartools` or `edgar-crawler`. Omit this parameter to use automatic date-based routing, which selects the most appropriate parser based on the filing date. Pass an unsupported value to receive a `422 validation_error`.
+</ParamField>
+
+## Response
+
+A successful request returns an `ItemPage` object with a `200` status. All extracted items for the filing are returned in a single page.
+
+<ResponseField name="form_type" type="string">
+  The SEC form type the items were extracted from. One of `"10-K"`, `"10-Q"`, or `"8-K"`.
+</ResponseField>
+
+<ResponseField name="results" type="ItemResponse[]">
+  Array of extracted item sections.
+
+  <Expandable title="ItemResponse properties">
+    <ResponseField name="item_key" type="string">
+      Normalized snake_case identifier for the item (e.g. `item_1a`, `part_1_item_1`).
+    </ResponseField>
+
+    <ResponseField name="title" type="string">
+      The item's section title as it appears in the form (e.g. `Risk Factors`).
+    </ResponseField>
+
+    <ResponseField name="text" type="string">
+      The cleaned extracted text of the item section.
+    </ResponseField>
+
+    <ResponseField name="char_range" type="integer[]">
+      A two-element array `[start, end]` representing the character offsets of this item in the source document.
+    </ResponseField>
+
+    <ResponseField name="word_count" type="integer">
+      The number of words in the extracted text.
+    </ResponseField>
+
+    <ResponseField name="extraction_method" type="string">
+      The parser used to extract this item. One of `"edgartools"` or `"edgar-crawler"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+  Total number of items extracted from the filing.
+</ResponseField>
+
+<ResponseField name="page" type="integer">
+  Current page number. Always `1` for this endpoint.
+</ResponseField>
+
+<ResponseField name="pages" type="integer">
+  Total number of pages. Always `1` for this endpoint.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url "https://api.easy-edgar.com/v1/filings/0000320193-23-000106/items" \
+  --header "Authorization: Bearer hv_live_<your_key>"
+```
+
+```bash Force parser
+curl --request GET \
+  --url "https://api.easy-edgar.com/v1/filings/0000320193-23-000106/items?parser=edgartools" \
+  --header "Authorization: Bearer hv_live_<your_key>"
+```
+
+</CodeGroup>
+
+```json 200
+{
+  "form_type": "10-K",
+  "results": [
+    {
+      "item_key": "item_1",
+      "title": "Business",
+      "text": "Apple Inc. designs, manufactures, and markets smartphones...",
+      "char_range": [1024, 18432],
+      "word_count": 2891,
+      "extraction_method": "edgartools"
+    },
+    {
+      "item_key": "item_1a",
+      "title": "Risk Factors",
+      "text": "The following risk factors could materially affect our business...",
+      "char_range": [18433, 89203],
+      "word_count": 12450,
+      "extraction_method": "edgartools"
+    }
+  ],
+  "total": 24,
+  "page": 1,
+  "pages": 1
+}
+```
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `400` | `unsupported_form_type` | Item extraction is not supported for this filing's form type. Only 10-K, 10-Q, and 8-K are supported. |
+| `401` | `unauthorized` | Missing or invalid Bearer token. |
+| `404` | `not_found` | No filing found for the given accession number. |
+| `422` | `validation_error` | The `parser` value is not recognized, or the accession number is malformed. |
+| `502` | `upstream_error` | The SEC EDGAR archive could not be reached or returned an error. |
+
+All error responses use the standard envelope:
+
+```json
+{
+  "error": {
+    "code": "unsupported_form_type",
+    "message": "Item extraction is not supported for form type DEF 14A.",
+    "details": {}
+  }
+}
+```

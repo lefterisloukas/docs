@@ -1,0 +1,164 @@
+---
+title: "List company filings — GET /v1/companies/{id}/filings"
+description: "List SEC filings for a company, filtered by form type and date range. Returns paginated FilingSummary objects ordered most-recent-first."
+---
+
+Use this endpoint to retrieve a paginated list of SEC filings for any public company. You can narrow results by form type (e.g. `10-K`, `8-K`) and by filing date range. Results are ordered most-recent-first, as returned by SEC EDGAR. The identifier works the same as the company lookup endpoint — pass a ticker or a CIK.
+
+## Endpoint
+
+```
+GET /v1/companies/{identifier}/filings
+```
+
+## Authentication
+
+This endpoint requires a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+## Path parameters
+
+<ParamField path="identifier" type="string" required>
+  Ticker symbol (case-insensitive, e.g. `AAPL`) or CIK. CIKs are accepted both zero-padded to ten digits (e.g. `0000320193`) and as plain integers (e.g. `320193`).
+</ParamField>
+
+## Query parameters
+
+<ParamField query="form_type" type="string">
+  Filter by SEC form code. Must be an exact match including dashes (e.g. `10-K`, `10-Q`, `8-K`, `DEF 14A`, `S-1`, `20-F`). Omit to return all form types.
+</ParamField>
+
+<ParamField query="start_date" type="string">
+  Inclusive lower bound on the SEC filing date (not the period of report). Accepts three formats:
+
+  - `YYYY` — expands to January 1 of that year (e.g. `2020` → `2020-01-01`)
+  - `YYYY-MM` — expands to the first day of that month (e.g. `2020-03` → `2020-03-01`)
+  - `YYYY-MM-DD` — exact date
+
+  Valid year range: 1900–2100.
+</ParamField>
+
+<ParamField query="end_date" type="string">
+  Inclusive upper bound on the SEC filing date. Accepts three formats:
+
+  - `YYYY` — expands to December 31 of that year (e.g. `2020` → `2020-12-31`)
+  - `YYYY-MM` — expands to the last day of that month (e.g. `2021-02` → `2021-02-28`)
+  - `YYYY-MM-DD` — exact date
+
+  Valid year range: 1900–2100.
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number to return. Must be `>= 1`.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Number of results per page. Must be between `1` and `100`.
+</ParamField>
+
+<Note>
+  `start_date` must be on or before `end_date` after date expansion. Providing a range where the start falls after the end returns `422 validation_error`.
+</Note>
+
+## Response
+
+### 200 — Paginated filings list
+
+<ResponseField name="results" type="FilingSummary[]" required>
+  Array of filing summaries for the current page.
+
+  <Expandable title="FilingSummary properties">
+    <ResponseField name="accession_number" type="string">
+      SEC accession number with dashes (e.g. `"0000320193-23-000106"`). Use this to fetch full filing details, documents, and items.
+    </ResponseField>
+    <ResponseField name="form_type" type="string">
+      SEC form code (e.g. `"10-K"`, `"8-K"`).
+    </ResponseField>
+    <ResponseField name="filed_at" type="string">
+      Date the filing was submitted to the SEC, in `YYYY-MM-DD` format.
+    </ResponseField>
+    <ResponseField name="period_of_report" type="string">
+      Period covered by the filing, in `YYYY-MM-DD` format.
+    </ResponseField>
+    <ResponseField name="primary_document" type="string">
+      Filename of the primary filing document (e.g. `"aapl-20230930.htm"`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total" type="integer" required>
+  Total number of filings matching the query.
+</ResponseField>
+
+<ResponseField name="page" type="integer" required>
+  Current page number.
+</ResponseField>
+
+<ResponseField name="pages" type="integer" required>
+  Total number of pages.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash Basic — all filings
+curl "https://api.easy-edgar.com/v1/companies/AAPL/filings" \
+  -H "Authorization: Bearer hv_live_<your_key>"
+```
+
+```bash Filter by form type
+curl "https://api.easy-edgar.com/v1/companies/AAPL/filings?form_type=10-K" \
+  -H "Authorization: Bearer hv_live_<your_key>"
+```
+
+```bash Filter by date range
+curl "https://api.easy-edgar.com/v1/companies/AAPL/filings?start_date=2020&end_date=2023-12-31" \
+  -H "Authorization: Bearer hv_live_<your_key>"
+```
+
+</CodeGroup>
+
+**Response:**
+
+```json 200
+{
+  "results": [
+    {
+      "accession_number": "0000320193-23-000106",
+      "form_type": "10-K",
+      "filed_at": "2023-11-03",
+      "period_of_report": "2023-09-30",
+      "primary_document": "aapl-20230930.htm"
+    }
+  ],
+  "total": 142,
+  "page": 1,
+  "pages": 8
+}
+```
+
+<Tip>
+  To read item sections from a filing — such as Risk Factors or MD&A — take the `accession_number` from any result and pass it to [`GET /v1/filings/{accession_number}/items`](/api/items/list-items).
+</Tip>
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401` | `unauthorized` | Missing or invalid Bearer token. |
+| `404` | `not_found` | No company matched the given ticker or CIK. |
+| `422` | `validation_error` | Invalid input — for example, `start_date` is after `end_date`, or a date string is malformed. |
+
+```json 422
+{
+  "error": {
+    "code": "validation_error",
+    "message": "start_date must be on or before end_date.",
+    "details": {}
+  }
+}
+```

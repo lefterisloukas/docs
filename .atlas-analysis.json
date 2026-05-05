@@ -1,0 +1,111 @@
+{
+  "projectType": "api-service",
+  "projectName": "Easy Edgar",
+  "projectDescription": "A SaaS REST API that delivers clean, item-level text extraction from SEC EDGAR filings — including 10-K, 10-Q, and 8-K — going back to 1993.",
+  "theme": "luma",
+  "primaryColor": "#d3fa63",
+  "lightColor": "#8c9454",
+  "darkColor": "#2e1e3c",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/companies",
+              "concepts/filings",
+              "concepts/item-extraction"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/fetch-company",
+              "guides/search-filings",
+              "guides/extract-items",
+              "guides/pagination"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/conventions",
+              "reference/errors",
+              "reference/rate-limits"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview"
+            ]
+          },
+          {
+            "group": "Companies",
+            "pages": [
+              "api/companies/get-company",
+              "api/companies/list-filings"
+            ]
+          },
+          {
+            "group": "Filings",
+            "pages": [
+              "api/filings/get-filing",
+              "api/filings/list-documents",
+              "api/filings/get-document"
+            ]
+          },
+          {
+            "group": "Item Extraction",
+            "pages": [
+              "api/items/list-items",
+              "api/items/get-item"
+            ]
+          },
+          {
+            "group": "Discovery",
+            "pages": [
+              "api/discovery/supported-forms",
+              "api/discovery/item-types"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Item-level text extraction for 10-K, 10-Q, and 8-K filings back to 1993",
+    "Company lookup by ticker or CIK with full SEC metadata",
+    "Paginated filing discovery with form type and date range filters",
+    "Raw and plain-text document retrieval for any filing artifact",
+    "Supported form and item-type discovery endpoints",
+    "Bearer token authentication with consistent snake_case API conventions"
+  ],
+  "publicApiSurface": [
+    "GET /health",
+    "GET /v1/companies/{identifier}",
+    "GET /v1/companies/{identifier}/filings",
+    "GET /v1/filings/{accession_number}",
+    "GET /v1/filings/{accession_number}/documents",
+    "GET /v1/filings/{accession_number}/documents/{document_id}",
+    "GET /v1/filings/{accession_number}/items",
+    "GET /v1/filings/{accession_number}/items/{item_key}",
+    "GET /v1/forms/supported",
+    "GET /v1/filings/item_types"
+  ]
+}

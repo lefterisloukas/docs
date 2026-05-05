@@ -1,0 +1,100 @@
+---
+title: "List all valid item keys — GET /v1/filings/item_types"
+description: "List all valid item keys and section titles for a given form type. Use this to discover which item_key values to pass to extraction endpoints."
+---
+
+Use this endpoint to discover the complete set of item keys available for a given form type before you call any extraction endpoint. Each entry returns the snake_case `item_key` you pass to `GET /v1/filings/{accession_number}/items/{item_key}`, along with a human-readable title so you can identify the section. This is the right starting point whenever you are working with a form type for the first time or building a UI that lets users select which sections to extract.
+
+## Endpoint
+
+```
+GET /v1/filings/item_types
+```
+
+## Authentication
+
+This endpoint requires a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+A missing or invalid key returns `401 unauthorized`.
+
+## Query parameters
+
+<ParamField query="form_type" type="string" required>
+  The SEC form type to retrieve item definitions for. Case-insensitive. Accepted values: `10-K`, `10-Q`, `8-K`.
+</ParamField>
+
+## Response
+
+**200 OK**
+
+<ResponseField name="results" type="object[]">
+  Array of item type entries for the requested form type.
+
+  <Expandable title="results[]">
+    <ResponseField name="item_key" type="string">
+      The snake_case key to pass to extraction endpoints. Examples: `"item_1"`, `"item_7a"`, `"signature"`.
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      The human-readable section name as it appears in the filing. Example: `"Risk Factors"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example request
+
+```bash
+curl https://api.easy-edgar.com/v1/filings/item_types?form_type=10-K \
+  -H "Authorization: Bearer hv_live_<your_key>"
+```
+
+### Example response (10-K — all 24 items)
+
+```json
+{
+  "results": [
+    {"item_key": "item_1",   "title": "Business"},
+    {"item_key": "item_1a",  "title": "Risk Factors"},
+    {"item_key": "item_1b",  "title": "Unresolved Staff Comments"},
+    {"item_key": "item_1c",  "title": "Cybersecurity"},
+    {"item_key": "item_2",   "title": "Properties"},
+    {"item_key": "item_3",   "title": "Legal Proceedings"},
+    {"item_key": "item_4",   "title": "Mine Safety Disclosures"},
+    {"item_key": "item_5",   "title": "Market for Registrant's Common Equity"},
+    {"item_key": "item_6",   "title": "Reserved"},
+    {"item_key": "item_7",   "title": "Management's Discussion and Analysis"},
+    {"item_key": "item_7a",  "title": "Quantitative and Qualitative Disclosures About Market Risk"},
+    {"item_key": "item_8",   "title": "Financial Statements and Supplementary Data"},
+    {"item_key": "item_9",   "title": "Changes in and Disagreements With Accountants"},
+    {"item_key": "item_9a",  "title": "Controls and Procedures"},
+    {"item_key": "item_9b",  "title": "Other Information"},
+    {"item_key": "item_9c",  "title": "Disclosure Regarding Foreign Jurisdictions"},
+    {"item_key": "item_10",  "title": "Directors and Officers"},
+    {"item_key": "item_11",  "title": "Executive Compensation"},
+    {"item_key": "item_12",  "title": "Security Ownership of Certain Beneficial Owners"},
+    {"item_key": "item_13",  "title": "Certain Relationships and Related Transactions"},
+    {"item_key": "item_14",  "title": "Principal Accountant Fees and Services"},
+    {"item_key": "item_15",  "title": "Exhibits and Financial Statement Schedules"},
+    {"item_key": "item_16",  "title": "Form 10-K Summary"},
+    {"item_key": "signature","title": "Signature"}
+  ]
+}
+```
+
+<Note>
+  Use the `item_key` values returned here as the `{item_key}` path parameter when calling `GET /v1/filings/{accession_number}/items/{item_key}`.
+</Note>
+
+<Tip>
+  Not every item appears in every filing. For example, `item_1c` (Cybersecurity) was introduced by the SEC in 2023 and will be absent from filings before that year. If an item is missing from a specific filing, the single-item extraction endpoint returns `404 item_not_found`.
+</Tip>
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `400` | `unsupported_form_type` | The `form_type` value is not one of `10-K`, `10-Q`, or `8-K`. |
+| `401` | `unauthorized` | Missing or invalid Bearer token. |

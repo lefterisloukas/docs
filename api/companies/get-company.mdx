@@ -1,0 +1,150 @@
+---
+title: "Look up a company — GET /v1/companies/{identifier}"
+description: "Look up any SEC-registered company by ticker or CIK. Returns name, tickers, SIC code, fiscal year end, state of incorporation, and addresses."
+---
+
+Use this endpoint to retrieve the SEC-registered profile for any public company. You can identify a company by its ticker symbol (case-insensitive) or by its CIK — either zero-padded to ten digits or as a plain integer. The response includes the company's legal name, all known tickers, SIC classification, fiscal year end, state of incorporation, and both its business and mailing addresses.
+
+## Endpoint
+
+```
+GET /v1/companies/{identifier}
+```
+
+## Authentication
+
+This endpoint requires a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+## Path parameters
+
+<ParamField path="identifier" type="string" required>
+  Ticker symbol (case-insensitive, e.g. `AAPL`) or CIK. CIKs are accepted both zero-padded to ten digits (e.g. `0000320193`) and as plain integers (e.g. `320193`).
+</ParamField>
+
+## Response
+
+### 200 — Company profile
+
+<ResponseField name="cik" type="string" required>
+  10-digit zero-padded Central Index Key assigned by the SEC (e.g. `"0000320193"`).
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Legal name of the company as registered with the SEC.
+</ResponseField>
+
+<ResponseField name="tickers" type="string[]" required>
+  All known ticker symbols associated with this company.
+</ResponseField>
+
+<ResponseField name="sic_code" type="string" required>
+  Standard Industrial Classification code (e.g. `"3571"`).
+</ResponseField>
+
+<ResponseField name="industry" type="string" required>
+  Human-readable industry description derived from the SIC code (e.g. `"Electronic Computers"`).
+</ResponseField>
+
+<ResponseField name="fiscal_year_end" type="string" required>
+  Fiscal year end date in `MMDD` format (e.g. `"0928"` for September 28).
+</ResponseField>
+
+<ResponseField name="state_of_incorporation" type="string" required>
+  Two-letter state abbreviation (e.g. `"CA"`). May be an empty string if not on record.
+</ResponseField>
+
+<ResponseField name="business_address" type="object | null" required>
+  The company's principal place of business. `null` if not on record.
+
+  <Expandable title="properties">
+    <ResponseField name="street" type="string">
+      Street address. Defaults to an empty string if not available.
+    </ResponseField>
+    <ResponseField name="city" type="string">
+      City. Defaults to an empty string if not available.
+    </ResponseField>
+    <ResponseField name="state" type="string">
+      State abbreviation. Defaults to an empty string if not available.
+    </ResponseField>
+    <ResponseField name="zip_code" type="string">
+      ZIP or postal code. Defaults to an empty string if not available.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="mailing_address" type="object | null" required>
+  The company's mailing address. `null` if not on record or identical to the business address.
+
+  <Expandable title="properties">
+    <ResponseField name="street" type="string">
+      Street address. Defaults to an empty string if not available.
+    </ResponseField>
+    <ResponseField name="city" type="string">
+      City. Defaults to an empty string if not available.
+    </ResponseField>
+    <ResponseField name="state" type="string">
+      State abbreviation. Defaults to an empty string if not available.
+    </ResponseField>
+    <ResponseField name="zip_code" type="string">
+      ZIP or postal code. Defaults to an empty string if not available.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL (ticker)
+curl https://api.easy-edgar.com/v1/companies/AAPL \
+  -H "Authorization: Bearer hv_live_<your_key>"
+```
+
+```bash cURL (CIK)
+curl https://api.easy-edgar.com/v1/companies/0000320193 \
+  -H "Authorization: Bearer hv_live_<your_key>"
+```
+
+</CodeGroup>
+
+**Response:**
+
+```json 200
+{
+  "cik": "0000320193",
+  "name": "Apple Inc.",
+  "tickers": ["AAPL"],
+  "sic_code": "3571",
+  "industry": "Electronic Computers",
+  "fiscal_year_end": "0928",
+  "state_of_incorporation": "CA",
+  "business_address": {
+    "street": "One Apple Park Way",
+    "city": "Cupertino",
+    "state": "CA",
+    "zip_code": "95014"
+  },
+  "mailing_address": null
+}
+```
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401` | `unauthorized` | Missing or invalid Bearer token. |
+| `404` | `not_found` | No company matched the given ticker or CIK. |
+
+```json 404
+{
+  "error": {
+    "code": "not_found",
+    "message": "Company not found.",
+    "details": {}
+  }
+}
+```

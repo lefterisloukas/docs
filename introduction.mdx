@@ -1,0 +1,50 @@
+---
+title: "Easy Edgar: SEC EDGAR API for financial data access"
+description: "Easy Edgar is a REST API for SEC EDGAR data. Extract named sections from 10-K, 10-Q, and 8-K filings going back to 1993 with a single HTTP call."
+---
+
+Easy Edgar is a REST API that gives you clean, structured access to SEC EDGAR financial data. You can look up any public company by ticker or CIK, browse their filing history, and extract named sections — like Risk Factors or MD&A — directly from 10-K, 10-Q, and 8-K filings. The API handles the messy work of parsing raw SEC archives so you don't have to.
+
+## What Easy Edgar does
+
+The SEC publishes all filing data publicly, but it arrives as HTML and text dumps with inconsistent formatting — especially for filings before 2009. There's no native SEC endpoint that returns "give me Item 1A from Apple's 2005 10-K." Easy Edgar fills that gap.
+
+The key differentiator is **item-level text extraction going back to 1993**. You can request a specific item by its standard key (for example, `item_1a` for Risk Factors) and get back clean, extracted text — even for the oldest filings in the EDGAR archive that other commercial APIs skip or charge heavily to cover.
+
+## Key capabilities
+
+- **Company lookup** — retrieve a company's SEC profile by ticker or CIK, including name, SIC code, industry, and registered address.
+- **Filing discovery** — list a company's filings filtered by form type and date range, with pagination.
+- **Item text extraction** — extract individual named sections from 10-K, 10-Q, and 8-K filings by item key.
+- **Document retrieval** — fetch the raw or plain-text content of individual filing documents and exhibits.
+
+## Supported form types
+
+Easy Edgar supports item-level extraction for three SEC form types:
+
+| Form | Description | Items available |
+|------|-------------|-----------------|
+| 10-K | Annual report | 24 items, including Business, Risk Factors, MD&A, and Financial Statements |
+| 10-Q | Quarterly report | 12 items across Part I and Part II |
+| 8-K  | Current report (material events) | 30+ items covering material event categories |
+
+Use `GET /v1/forms/supported` to see the full list, or `GET /v1/filings/item_types?form_type=10-K` to list valid item keys for a specific form.
+
+## A note on pre-2009 filings
+
+Structured financial data from XBRL (such as parsed balance sheets and income statements) is only available for companies that filed using XBRL, which became mandatory around 2009. For filings before that period, Easy Edgar provides **text extraction only** — which is exactly the capability this API was built to offer. You can still extract the full text of any named item from filings going back to 1993; you just won't get structured financial figures for those older filings.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Authenticate and make your first API call in four steps.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Pass your API key in the Authorization header on every request.
+  </Card>
+  <Card title="Item extraction" icon="file-lines" href="/concepts/item-extraction">
+    Learn how Easy Edgar identifies and extracts named sections from filings.
+  </Card>
+  <Card title="API reference" icon="code" href="/api/overview">
+    Full reference for every endpoint — parameters, response shapes, and error codes.
+  </Card>
+</CardGroup>

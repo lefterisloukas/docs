@@ -1,0 +1,68 @@
+---
+title: "Form types with item extraction — GET /v1/forms/supported"
+description: "Retrieve every SEC filing form type that Easy Edgar supports for item extraction, with extraction status and item count per form type."
+---
+
+Use this endpoint to retrieve the complete list of SEC form types that Easy Edgar supports for item-level text extraction. Each entry tells you whether extraction is available for that form type and how many distinct items you can pull from it. Call this endpoint to programmatically check coverage before building a workflow around a specific form type.
+
+## Endpoint
+
+```
+GET /v1/forms/supported
+```
+
+## Authentication
+
+This endpoint requires a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+A missing or invalid key returns `401 unauthorized`.
+
+## Query parameters
+
+This endpoint takes no query parameters.
+
+## Response
+
+**200 OK**
+
+<ResponseField name="results" type="object[]">
+  Array of supported form type entries. One entry per supported form type.
+
+  <Expandable title="results[]">
+    <ResponseField name="form_type" type="string">
+      The SEC form type code. Examples: `"10-K"`, `"10-Q"`, `"8-K"`.
+    </ResponseField>
+    <ResponseField name="extraction_supported" type="boolean">
+      Whether item-level text extraction is available for this form type.
+    </ResponseField>
+    <ResponseField name="item_count" type="integer">
+      The number of distinct extractable items defined for this form type.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example response
+
+```json
+{
+  "results": [
+    {"form_type": "10-K", "extraction_supported": true, "item_count": 24},
+    {"form_type": "10-Q", "extraction_supported": true, "item_count": 12},
+    {"form_type": "8-K",  "extraction_supported": true, "item_count": 33}
+  ]
+}
+```
+
+<Note>
+  This response is not paginated. The endpoint returns a `results` array directly — there are no `total`, `page`, or `pages` fields.
+</Note>
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401` | `unauthorized` | Missing or invalid Bearer token. |

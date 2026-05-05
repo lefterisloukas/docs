@@ -1,0 +1,46 @@
+---
+title: "SEC EDGAR rate limits: stay within bounds in Easy Edgar"
+description: "Easy Edgar proxies SEC EDGAR, which enforces a shared 10 requests per second limit. Learn how to stay within limits and handle 502 errors."
+---
+
+Easy Edgar proxies the public SEC EDGAR archives on your behalf. Because SEC EDGAR is free, shared public infrastructure, it enforces a rate limit across all callers — not just yours. Understanding this constraint helps you design integrations that stay reliable and avoid disrupting other users of the service.
+
+## SEC EDGAR upstream limit
+
+SEC EDGAR enforces a limit of **10 requests per second**, shared across all callers of this service. This is not a per-account limit — it applies to Easy Edgar's total outbound request rate to SEC's servers.
+
+Keeping your concurrency modest is important. Bursting many parallel requests will quickly exhaust this budget, causing failures for your requests and for other users at the same time.
+
+## What happens when the limit is hit
+
+When SEC EDGAR rejects a request due to rate pressure, Easy Edgar returns a `502 upstream_error`:
+
+```json
+{
+  "error": {
+    "code": "upstream_error",
+    "message": "SEC EDGAR request failed. Please try again.",
+    "details": {}
+  }
+}
+```
+
+This is a transient error. Add a short delay and retry. See [Error codes and handling](/reference/errors) for general retry guidance.
+
+## Caching
+
+Easy Edgar uses an in-process LRU cache. When you request the same company profile or filing data multiple times, subsequent requests are often served from cache without touching SEC EDGAR at all. This means repeated lookups for the same resource are both faster and free of upstream rate pressure.
+
+<Warning>
+SEC EDGAR archives are shared public infrastructure used by researchers, developers, and financial professionals worldwide. Aggressive, high-concurrency scraping degrades the service for everyone. Keep your request rates reasonable.
+</Warning>
+
+## Tips for staying within limits
+
+**Use pagination with moderate limits.** Requesting 20–50 results per page rather than the maximum 100 keeps individual responses lighter and gives you natural pacing points between requests.
+
+**Add delays between bulk requests.** If you're iterating over many filings or companies, introduce a small pause — even 100–200 ms — between requests. This keeps your effective rate well below the shared ceiling.
+
+**Cache responses on your side.** Company profiles and historical filings don't change. Store responses you've already retrieved rather than re-fetching the same data.
+
+**Use specific item key requests when you only need one section.** If you need only `item_1a` (Risk Factors) from a filing, call `GET /v1/filings/{accession_number}/items/item_1a` directly rather than fetching all items with `GET /v1/filings/{accession_number}/items`. This reduces the number of document fetches Easy Edgar needs to make upstream.

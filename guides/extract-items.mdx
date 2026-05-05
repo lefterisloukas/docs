@@ -1,0 +1,133 @@
+---
+title: "Extract item text sections from 10-K, 10-Q, and 8-K filings"
+description: "Pull named text sections like Risk Factors or MD&A from any 10-K, 10-Q, or 8-K filing using Easy Edgar's item extraction endpoint."
+---
+
+SEC filings are divided into named sections called items — for example, Item 1A (Risk Factors) or Item 7 (Management's Discussion and Analysis). Easy Edgar's item extraction endpoints let you fetch those sections as clean, structured text without parsing raw HTML. Extraction is supported for 10-K, 10-Q, and 8-K filings going back to 1993.
+
+<Steps>
+  <Step title="Discover what items are available">
+    Before fetching, check which item keys are valid for a given form type. This is useful when you're working with a form type for the first time or building dynamic tooling:
+
+    ```bash
+    curl "https://api.easy-edgar.com/v1/filings/item_types?form_type=10-K" \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+
+    ```json
+    {
+      "results": [
+        { "item_key": "item_1",  "title": "Business" },
+        { "item_key": "item_1a", "title": "Risk Factors" },
+        { "item_key": "item_1b", "title": "Unresolved Staff Comments" },
+        { "item_key": "item_7",  "title": "Management's Discussion and Analysis" },
+        { "item_key": "item_7a", "title": "Quantitative and Qualitative Disclosures About Market Risk" },
+        { "item_key": "item_8",  "title": "Financial Statements and Supplementary Data" },
+        { "item_key": "item_9a", "title": "Controls and Procedures" }
+      ]
+    }
+    ```
+
+    The full 10-K list contains 24 entries. Pass `form_type=10-Q` or `form_type=8-K` to see the item lists for those form types.
+  </Step>
+
+  <Step title="Fetch all items from a filing">
+    To retrieve every extracted item from a filing, pass the accession number (with dashes) to the items endpoint:
+
+    ```bash
+    curl "https://api.easy-edgar.com/v1/filings/0000320193-23-000106/items" \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+
+    The response is a paginated list of `ItemResponse` objects, plus a top-level `form_type` field:
+
+    ```json
+    {
+      "form_type": "10-K",
+      "results": [
+        {
+          "item_key": "item_1",
+          "title": "Business",
+          "text": "Apple Inc. designs, manufactures, and markets smartphones...",
+          "char_range": [1204, 42800],
+          "word_count": 6821,
+          "extraction_method": "edgartools"
+        },
+        {
+          "item_key": "item_1a",
+          "title": "Risk Factors",
+          "text": "The following risk factors could materially affect our business...",
+          "char_range": [42801, 98450],
+          "word_count": 12450,
+          "extraction_method": "edgartools"
+        }
+      ],
+      "total": 18,
+      "page": 1,
+      "pages": 1
+    }
+    ```
+  </Step>
+
+  <Step title="Fetch a specific item">
+    When you only need one section, fetch it directly by item key to avoid downloading the full list:
+
+    ```bash
+    curl "https://api.easy-edgar.com/v1/filings/0000320193-23-000106/items/item_1a" \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+
+    ```json
+    {
+      "item_key": "item_1a",
+      "title": "Risk Factors",
+      "text": "The following risk factors could materially affect our business, financial condition, and results of operations...",
+      "char_range": [42801, 98450],
+      "word_count": 12450,
+      "extraction_method": "edgartools"
+    }
+    ```
+  </Step>
+</Steps>
+
+## Item response fields
+
+| Field | Type | Description |
+|---|---|---|
+| `item_key` | string | Snake_case item identifier, e.g. `item_1a` |
+| `title` | string | Human-readable section title |
+| `text` | string | Cleaned extracted text content |
+| `char_range` | int[2] | `[start, end]` character offsets of the section in the source document |
+| `word_count` | int | Approximate word count of the extracted text |
+| `extraction_method` | string | Which parser was used: `"edgartools"` or `"edgar-crawler"` |
+
+## Common item keys
+
+### 10-K
+
+| Item key | Title |
+|---|---|
+| `item_1` | Business |
+| `item_1a` | Risk Factors |
+| `item_7` | Management's Discussion and Analysis |
+| `item_7a` | Quantitative and Qualitative Disclosures About Market Risk |
+| `item_8` | Financial Statements and Supplementary Data |
+| `item_9a` | Controls and Procedures |
+
+### 8-K
+
+| Item key | Title |
+|---|---|
+| `item_1_01` | Entry into a Material Definitive Agreement |
+| `item_2_02` | Results of Operations and Financial Condition |
+| `item_5_02` | Departure of Directors or Certain Officers |
+
+For the complete list of item keys for any form type, call `GET /v1/filings/item_types?form_type=<form>`.
+
+<Note>
+  Not every item appears in every filing. A company may omit items that don't apply to them — for example, `item_1c` (Cybersecurity) only appears in 10-Ks filed after the SEC's 2023 cybersecurity disclosure rules took effect. If you request an item that isn't present in a particular filing, the API returns a `404` with `code: "item_not_found"`.
+</Note>
+
+<Tip>
+  The `parser` query parameter lets you force a specific extraction engine: `?parser=edgartools` or `?parser=edgar-crawler`. Omit it to let Easy Edgar route automatically — the default router selects the best parser based on the filing's age and format, which gives you the cleanest results without any configuration.
+</Tip>

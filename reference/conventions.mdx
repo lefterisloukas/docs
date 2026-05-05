@@ -1,0 +1,87 @@
+---
+title: "Easy Edgar API: naming, dates, and pagination rules"
+description: "Easy Edgar uses consistent conventions for naming, identifiers, dates, and pagination across all endpoints. Learn them once, use them everywhere."
+---
+
+Easy Edgar applies the same rules for naming, identifiers, dates, pagination, and response shapes across every endpoint. Learning these conventions once means you can predict the behavior of any endpoint without consulting its individual docs. This page is the complete reference for those shared rules.
+
+## Conventions at a glance
+
+| Aspect | Rule |
+|---|---|
+| Casing | `snake_case` for all field names and query parameters |
+| URL versioning | `/v1/` prefix on every public endpoint (except `/health`) |
+| CIK | 10-digit zero-padded string in responses (e.g. `"0000320193"`); inputs accept an unpadded CIK or ticker symbol (case-insensitive) |
+| Accession numbers | Always with dashes: `XXXXXXXXXX-XX-XXXXXX` (e.g. `0000320193-23-000106`) |
+| Dates | Responses always use `YYYY-MM-DD`; date filter parameters also accept `YYYY` and `YYYY-MM` prefixes |
+| Pagination | Offset-based: `page` (1-based) and `limit` (1–100, default 20) |
+| Paginated response shape | `{ "results": [...], "total": N, "page": N, "pages": N }` |
+| Single resource shape | JSON object directly — not wrapped in a collection |
+| Error shape | `{ "error": { "code": "...", "message": "...", "details": {} } }` |
+| Monetary values | Integers in full dollars with an explicit `currency` field |
+| HTTP methods | `GET` for all lookups; `POST` reserved for future complex screening |
+
+## Date filters in detail
+
+When you pass `start_date` or `end_date` to a list endpoint, Easy Edgar expands partial dates before applying the filter:
+
+- `2020` as a lower bound expands to `2020-01-01`
+- `2020` as an upper bound expands to `2020-12-31`
+- `2021-02` as an upper bound expands to `2021-02-28`
+
+Date filters apply to the SEC **filing date**, not the period the filing covers.
+
+## Pagination
+
+Every list endpoint supports `page` and `limit` query parameters. The response always includes four fields so you can build navigation without a second request:
+
+```json
+{
+  "results": [...],
+  "total": 142,
+  "page": 1,
+  "pages": 8
+}
+```
+
+`page` is 1-based. `limit` accepts values between 1 and 100; the default is 20.
+
+## Error envelope
+
+Every error — regardless of status code — uses the same structured envelope:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Company with identifier 'FAKECO' not found.",
+    "details": {}
+  }
+}
+```
+
+`code` is a machine-readable string you can branch on. `message` is human-readable. `details` contains additional structured context where applicable. See [Error codes and handling](/reference/errors) for the full list.
+
+## Authentication
+
+All endpoints except `GET /health` require a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_your_key_here
+```
+
+A missing or invalid key returns `401 unauthorized`.
+
+## OpenAPI surfaces
+
+You can explore the full API schema interactively through any of these built-in surfaces:
+
+| URL | Description |
+|---|---|
+| `GET /v1/openapi.json` | Machine-readable OpenAPI 3 schema |
+| `GET /v1/docs` | Swagger UI |
+| `GET /v1/redoc` | ReDoc UI |
+
+<Note>
+The OpenAPI document is auto-generated from the live application. It always reflects the current API surface.
+</Note>

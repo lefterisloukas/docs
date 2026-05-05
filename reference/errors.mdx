@@ -1,0 +1,143 @@
+---
+title: "Easy Edgar API error codes: causes and how to handle them"
+description: "Easy Edgar returns structured error responses with machine-readable codes. Learn every error code, its HTTP status, and how to handle it."
+---
+
+Every error response from Easy Edgar uses the same structured envelope regardless of the HTTP status code. The `code` field is a stable, machine-readable string you can branch on in your code — it won't change across minor API versions. The `message` field explains what went wrong in plain English, and `details` carries additional structured context where it's useful.
+
+## Error envelope format
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Company with identifier 'FAKECO' not found.",
+    "details": {}
+  }
+}
+```
+
+All three fields are always present. `details` is an empty object when there's nothing additional to convey.
+
+## Error codes
+
+| HTTP status | `code` | When it occurs |
+|---|---|---|
+| `400` | `unsupported_form_type` | You requested item extraction for a form type other than `10-K`, `10-Q`, or `8-K` |
+| `401` | `unauthorized` | The `Authorization` header is missing or the Bearer token is invalid |
+| `404` | `not_found` | The company, filing, or document you requested does not exist |
+| `404` | `item_not_found` | The filing exists, but the requested `item_key` is not present in it |
+| `422` | `validation_error` | The request is malformed — for example, a bad accession number format or an invalid `parser` value |
+| `502` | `upstream_error` | Easy Edgar's request to SEC EDGAR failed |
+
+## Sample responses
+
+<AccordionGroup>
+  <Accordion title="400 unsupported_form_type">
+    Returned when you call an item extraction endpoint on a filing that is not a `10-K`, `10-Q`, or `8-K`.
+
+    ```json
+    {
+      "error": {
+        "code": "unsupported_form_type",
+        "message": "Item extraction is not supported for form type 'DEF 14A'. Supported types are 10-K, 10-Q, and 8-K.",
+        "details": {}
+      }
+    }
+    ```
+
+    Check the `form_type` field on the filing before requesting items. Use `GET /v1/forms/supported` to retrieve the current list of supported form types.
+  </Accordion>
+
+  <Accordion title="401 unauthorized">
+    Returned when the `Authorization` header is absent or the token is not recognized.
+
+    ```json
+    {
+      "error": {
+        "code": "unauthorized",
+        "message": "Missing or invalid Bearer token.",
+        "details": {}
+      }
+    }
+    ```
+
+    All endpoints except `GET /health` require a valid `Authorization: Bearer hv_live_...` header.
+  </Accordion>
+
+  <Accordion title="404 not_found">
+    Returned when a company, filing, or document cannot be located.
+
+    ```json
+    {
+      "error": {
+        "code": "not_found",
+        "message": "Filing '0000000000-00-000000' not found.",
+        "details": {}
+      }
+    }
+    ```
+
+    Double-check that the accession number is formatted with dashes (`XXXXXXXXXX-XX-XXXXXX`) and that the resource exists in SEC EDGAR.
+  </Accordion>
+
+  <Accordion title="404 item_not_found">
+    Returned when the filing exists but does not contain the requested item section.
+
+    ```json
+    {
+      "error": {
+        "code": "item_not_found",
+        "message": "Item 'item_1c' not found in filing '0000320193-22-000108'.",
+        "details": {}
+      }
+    }
+    ```
+
+    This is common for item keys that were introduced in later disclosure rules. For example, `item_1c` (Cybersecurity) was not required on 10-Ks before 2023. See the tip below for how to discover which items are present before requesting them.
+  </Accordion>
+
+  <Accordion title="422 validation_error">
+    Returned when the request input is malformed.
+
+    ```json
+    {
+      "error": {
+        "code": "validation_error",
+        "message": "Invalid accession number format. Expected XXXXXXXXXX-XX-XXXXXX.",
+        "details": {}
+      }
+    }
+    ```
+
+    Common causes: accession number without dashes, an invalid `parser` value, a `start_date` later than `end_date`, or a `limit` outside the 1–100 range.
+  </Accordion>
+
+  <Accordion title="502 upstream_error">
+    Returned when Easy Edgar's request to SEC EDGAR failed.
+
+    ```json
+    {
+      "error": {
+        "code": "upstream_error",
+        "message": "SEC EDGAR request failed. Please try again.",
+        "details": {}
+      }
+    }
+    ```
+
+    This is a transient error. Wait briefly and retry — SEC EDGAR is a shared public infrastructure and occasionally returns errors under load. If the error persists for a specific filing, the document may be temporarily unavailable on SEC's side.
+  </Accordion>
+</AccordionGroup>
+
+## Handling recommendations
+
+- **502 upstream_error** — Retry with exponential backoff. This error is almost always transient.
+- **400 unsupported_form_type** — Check the filing's `form_type` before calling item extraction. Use `GET /v1/forms/supported` to get the current list of supported types.
+- **404 item_not_found** — The item key you requested is valid for the form type but not present in this specific filing. This happens most often with items that were added by more recent disclosure requirements (e.g. cybersecurity disclosures on pre-2023 10-Ks).
+- **422 validation_error** — Fix the malformed input before retrying. Check that accession numbers include dashes, dates use a supported format, and any enum parameters use a documented value.
+- **401 unauthorized** — Verify that your `Authorization` header is present and that the token begins with `hv_live_`.
+
+<Tip>
+Call `GET /v1/filings/item_types?form_type=10-K` (or `10-Q` / `8-K`) to retrieve the full list of valid item keys for a form type before requesting specific items. This lets you check whether a key exists for the form, and avoid `item_not_found` errors on filings that predate certain disclosure requirements.
+</Tip>

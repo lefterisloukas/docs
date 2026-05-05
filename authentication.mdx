@@ -1,0 +1,69 @@
+---
+title: "Authentication: Easy Edgar API keys and Bearer tokens"
+description: "Easy Edgar uses Bearer token authentication. Pass your API key in the Authorization header on every request to access protected endpoints."
+---
+
+Easy Edgar authenticates requests using Bearer tokens. You pass your API key in the `Authorization` header with every request. There are no session cookies, no OAuth flows, and no query-string parameters — just the header on each call.
+
+<Warning>
+  Keep your API key secret. Do not commit it to source control, include it in client-side code, or share it publicly. If your key is exposed, rotate it immediately from your account dashboard.
+</Warning>
+
+## Get an API key
+
+Sign up at the Easy Edgar dashboard to receive your API key. Keys are issued immediately and start with the prefix `hv_live_` — for example, `hv_live_abc123xyz`.
+
+## Pass your key on every request
+
+Add the `Authorization` header to every API request:
+
+```http
+Authorization: Bearer hv_live_<your_key>
+```
+
+<CodeGroup>
+
+```bash curl
+curl -H "Authorization: Bearer hv_live_<your_key>" \
+  https://api.easy-edgar.com/v1/companies/AAPL
+```
+
+```python Python
+import httpx
+
+headers = {"Authorization": "Bearer hv_live_<your_key>"}
+response = httpx.get("https://api.easy-edgar.com/v1/companies/AAPL", headers=headers)
+print(response.json())
+```
+
+</CodeGroup>
+
+## What happens with a missing or invalid key
+
+If you omit the `Authorization` header or provide a key that doesn't match any active key, Easy Edgar returns a `401` response:
+
+```json
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "Missing or invalid Bearer token.",
+    "details": {}
+  }
+}
+```
+
+Check that your key is correctly formatted (`hv_live_` followed by your key value) and that the header name is `Authorization`.
+
+## The one unauthenticated endpoint
+
+`GET /health` does not require authentication. You can use it to verify that the service is reachable without a valid key:
+
+```bash
+curl https://api.easy-edgar.com/health
+```
+
+```json
+{ "status": "ok" }
+```
+
+All other endpoints under `/v1/` require a valid Bearer token.

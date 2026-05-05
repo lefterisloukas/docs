@@ -1,0 +1,177 @@
+---
+title: "Quickstart: get started with Easy Edgar in minutes"
+description: "Learn how to authenticate, look up a company, retrieve filings, and extract a named filing section from the Easy Edgar API in four steps."
+---
+
+This guide walks you through the four essential operations in Easy Edgar: authenticating your requests, looking up a company, listing its filings, and extracting a specific item section from a filing. By the end you'll have made a real API call and seen the response shape for each resource.
+
+<Note>
+  All endpoints except `GET /health` require a Bearer token in the `Authorization` header. See [Authentication](/authentication) for details.
+</Note>
+
+<Steps>
+  <Step title="Authenticate">
+    Every request to Easy Edgar must include your API key as a Bearer token in the `Authorization` header. Your key starts with `hv_live_`.
+
+    ```bash
+    Authorization: Bearer hv_live_<your_key>
+    ```
+
+    If your key is missing or invalid, the API returns a `401` response:
+
+    ```json
+    {
+      "error": {
+        "code": "unauthorized",
+        "message": "Missing or invalid Bearer token.",
+        "details": {}
+      }
+    }
+    ```
+
+    You can verify your setup against the unauthenticated health endpoint:
+
+    ```bash
+    curl https://api.easy-edgar.com/health
+    ```
+
+    ```json
+    { "status": "ok" }
+    ```
+  </Step>
+
+  <Step title="Look up a company">
+    Pass a ticker symbol or CIK to `GET /v1/companies/{identifier}` to retrieve the company's SEC profile.
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -H "Authorization: Bearer hv_live_<your_key>" \
+      https://api.easy-edgar.com/v1/companies/AAPL
+    ```
+
+    ```python Python
+    import httpx
+
+    headers = {"Authorization": "Bearer hv_live_<your_key>"}
+    response = httpx.get("https://api.easy-edgar.com/v1/companies/AAPL", headers=headers)
+    print(response.json())
+    ```
+
+    </CodeGroup>
+
+    Response:
+
+    ```json
+    {
+      "cik": "0000320193",
+      "name": "Apple Inc.",
+      "tickers": ["AAPL"],
+      "sic_code": "3571",
+      "industry": "Electronic Computers",
+      "fiscal_year_end": "0928",
+      "state_of_incorporation": "CA",
+      "business_address": {
+        "street": "One Apple Park Way",
+        "city": "Cupertino",
+        "state": "CA",
+        "zip_code": "95014"
+      },
+      "mailing_address": null
+    }
+    ```
+
+    The `cik` field is always returned as a 10-digit zero-padded string. You can use either the ticker or the CIK in subsequent requests.
+  </Step>
+
+  <Step title="Get company filings">
+    List a company's filings with `GET /v1/companies/{identifier}/filings`. Filter by `form_type` to narrow results to a specific SEC form.
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -H "Authorization: Bearer hv_live_<your_key>" \
+      "https://api.easy-edgar.com/v1/companies/AAPL/filings?form_type=10-K&limit=5"
+    ```
+
+    ```python Python
+    import httpx
+
+    headers = {"Authorization": "Bearer hv_live_<your_key>"}
+    params = {"form_type": "10-K", "limit": 5}
+    response = httpx.get(
+        "https://api.easy-edgar.com/v1/companies/AAPL/filings",
+        headers=headers,
+        params=params,
+    )
+    print(response.json())
+    ```
+
+    </CodeGroup>
+
+    Response:
+
+    ```json
+    {
+      "results": [
+        {
+          "accession_number": "0000320193-23-000106",
+          "form_type": "10-K",
+          "filed_at": "2023-11-03",
+          "period_of_report": "2023-09-30",
+          "primary_document": "aapl-20230930.htm"
+        }
+      ],
+      "total": 42,
+      "page": 1,
+      "pages": 9
+    }
+    ```
+
+    Results are ordered most-recent-first. Copy an `accession_number` from the response — you'll use it in the next step.
+  </Step>
+
+  <Step title="Extract a filing item">
+    Request a specific section from a filing using `GET /v1/filings/{accession_number}/items/{item_key}`. Item keys are snake_case identifiers like `item_1a` for Risk Factors or `item_7` for MD&A.
+
+    <CodeGroup>
+
+    ```bash curl
+    curl -H "Authorization: Bearer hv_live_<your_key>" \
+      https://api.easy-edgar.com/v1/filings/0000320193-23-000106/items/item_1a
+    ```
+
+    ```python Python
+    import httpx
+
+    headers = {"Authorization": "Bearer hv_live_<your_key>"}
+    accession = "0000320193-23-000106"
+    response = httpx.get(
+        f"https://api.easy-edgar.com/v1/filings/{accession}/items/item_1a",
+        headers=headers,
+    )
+    print(response.json())
+    ```
+
+    </CodeGroup>
+
+    Response:
+
+    ```json
+    {
+      "item_key": "item_1a",
+      "title": "Risk Factors",
+      "text": "The following risk factors and other information included in this Annual Report on Form 10-K should be carefully considered...",
+      "char_range": [4521, 89203],
+      "word_count": 12450,
+      "extraction_method": "edgartools"
+    }
+    ```
+
+    The `text` field contains the cleaned extracted text for that section. `char_range` gives the `[start, end]` character offsets in the source document, and `word_count` gives the length of the extracted text.
+
+    <Tip>
+      Use `GET /v1/filings/item_types?form_type=10-K` to see every valid item key for a form type, including items like `item_7` (MD&A), `item_8` (Financial Statements), and `item_9a` (Controls and Procedures).
+    </Tip>
+  </Step>
+</Steps>

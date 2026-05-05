@@ -1,0 +1,125 @@
+---
+title: "Easy Edgar REST API: all endpoints and conventions"
+description: "Easy Edgar exposes a versioned REST API at /v1/. All endpoints use Bearer token auth, snake_case naming, and consistent error envelopes."
+---
+
+Easy Edgar is a versioned REST API that gives you structured access to SEC EDGAR financial data. Every public endpoint lives under the `/v1/` prefix, accepts and returns JSON with `snake_case` field names, requires a Bearer token for authentication, and wraps errors in a consistent envelope. This page covers the base URL, authentication, response conventions, pagination, the full endpoint index, and the available interactive API explorers.
+
+## Base URL
+
+All API requests go to:
+
+```
+https://api.easy-edgar.com
+```
+
+Every public endpoint (except `/health`) is prefixed with `/v1/`:
+
+```
+https://api.easy-edgar.com/v1/companies/AAPL
+```
+
+<Note>
+  Easy Edgar is currently in private beta. Contact the team to request access and receive your API key.
+</Note>
+
+## Authentication
+
+All endpoints except `GET /health` require a Bearer token. Pass your API key in the `Authorization` header on every request:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+A missing or invalid key returns `401 unauthorized`. See the [Authentication](/authentication) page for details on managing your keys.
+
+## Response format
+
+All responses are JSON. Field names use `snake_case` throughout.
+
+**Single-resource responses** return the object directly at the top level:
+
+```json
+{
+  "cik": "0000320193",
+  "name": "Apple Inc.",
+  "tickers": ["AAPL"]
+}
+```
+
+**Paginated responses** wrap results in a standard envelope:
+
+```json
+{
+  "results": [...],
+  "total": 142,
+  "page": 1,
+  "pages": 8
+}
+```
+
+**Error responses** always use the same envelope regardless of status code:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Company not found.",
+    "details": {}
+  }
+}
+```
+
+## Pagination
+
+Paginated endpoints use offset-based pagination controlled by two query parameters:
+
+| Parameter | Type | Default | Constraints |
+|-----------|------|---------|-------------|
+| `page` | integer | `1` | `>= 1` |
+| `limit` | integer | `20` | `1–100` |
+
+The response body always includes `total` (total matching records), `page` (current page), and `pages` (total pages).
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Service health check (no auth required) |
+| `GET` | `/v1/companies/{identifier}` | Look up a company by ticker or CIK |
+| `GET` | `/v1/companies/{identifier}/filings` | List SEC filings for a company |
+| `GET` | `/v1/filings/{accession_number}` | Get filing metadata |
+| `GET` | `/v1/filings/{accession_number}/documents` | List all documents in a filing |
+| `GET` | `/v1/filings/{accession_number}/documents/{document_id}` | Fetch a single filing document |
+| `GET` | `/v1/filings/{accession_number}/items` | Extract all item sections from a filing |
+| `GET` | `/v1/filings/{accession_number}/items/{item_key}` | Extract a single item section by key |
+| `GET` | `/v1/forms/supported` | List form types that support item extraction |
+| `GET` | `/v1/filings/item_types` | List valid item keys for a given form type |
+
+## Interactive API explorers
+
+Easy Edgar auto-generates three interactive interfaces from its OpenAPI schema:
+
+| Interface | URL | Purpose |
+|-----------|-----|---------|
+| OpenAPI schema | `GET /v1/openapi.json` | Machine-readable OpenAPI 3 JSON |
+| Swagger UI | `GET /v1/docs` | Interactive browser-based API explorer |
+| ReDoc | `GET /v1/redoc` | Readable, reference-style API documentation |
+
+<Tip>
+  Use Swagger UI at `/v1/docs` to try requests directly in your browser without writing any code.
+</Tip>
+
+## Conventions
+
+| Aspect | Rule |
+|--------|------|
+| Field casing | `snake_case` for all field names and query parameters |
+| CIK format | 10-digit zero-padded string in responses (`0000320193`); inputs accept unpadded CIK or ticker |
+| Accession numbers | Always with dashes: `0000320193-23-000106` |
+| Dates | Responses emit `YYYY-MM-DD`; date filters also accept `YYYY` and `YYYY-MM` prefixes |
+| Monetary values | Integers (full dollars) with an explicit currency field |
+
+## Rate limits
+
+The SEC EDGAR upstream limit is **10 requests per second** across all callers of this service. Keep concurrency modest to avoid hitting this ceiling. See [Rate limits](/reference/rate-limits) for more detail.

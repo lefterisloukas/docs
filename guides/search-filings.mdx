@@ -1,0 +1,100 @@
+---
+title: "Search and filter a company's SEC filings by form type"
+description: "Retrieve a company's SEC filings filtered by form type and date range. Results are paginated 20 per page and ordered most-recent-first."
+---
+
+The `GET /v1/companies/{identifier}/filings` endpoint returns the full filing history for any SEC-registered company. By default it returns all form types sorted most-recent-first. You can narrow results by form type, filing date range, or both — and use `page` and `limit` to walk through large histories.
+
+<Steps>
+  <Step title="Get all filings for a company">
+    With no filters, the endpoint returns every filing on record for the company, paginated 20 per page:
+
+    ```bash
+    curl "https://api.easy-edgar.com/v1/companies/AAPL/filings" \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+
+    ```json
+    {
+      "results": [
+        {
+          "accession_number": "0000320193-23-000106",
+          "form_type": "10-K",
+          "filed_at": "2023-11-03",
+          "period_of_report": "2023-09-30",
+          "primary_document": "aapl-20230930.htm"
+        }
+      ],
+      "total": 142,
+      "page": 1,
+      "pages": 8
+    }
+    ```
+  </Step>
+
+  <Step title="Filter by form type">
+    Add `form_type` to limit results to a specific SEC form code. The value must be an exact match (with dashes):
+
+    ```bash
+    curl "https://api.easy-edgar.com/v1/companies/AAPL/filings?form_type=10-K" \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+
+    Common form codes: `10-K`, `10-Q`, `8-K`, `DEF 14A`, `S-1`, `20-F`.
+  </Step>
+
+  <Step title="Filter by date range">
+    Use `start_date` and `end_date` to bound results by filing date. Both parameters accept year, year-month, or full date:
+
+    ```bash
+    # All filings from 2020 through 2023
+    curl "https://api.easy-edgar.com/v1/companies/AAPL/filings?start_date=2020&end_date=2023" \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+
+    Date expansion rules:
+    - `start_date=2020` expands to `2020-01-01`
+    - `start_date=2020-03` expands to `2020-03-01`
+    - `end_date=2023` expands to `2023-12-31`
+    - `end_date=2023-02` expands to `2023-02-28`
+  </Step>
+
+  <Step title="Combine filters and paginate">
+    Filters compose freely. To retrieve all 10-K filings from 2010 onwards, showing 10 per page:
+
+    ```bash
+    curl "https://api.easy-edgar.com/v1/companies/AAPL/filings?form_type=10-K&start_date=2010&page=1&limit=10" \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+
+    Use the `pages` field from the response to know when you've reached the last page. See [Paginate results](/guides/pagination) for a full walkthrough.
+  </Step>
+</Steps>
+
+## Query parameters
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `form_type` | No | — | Exact SEC form code, e.g. `10-K`, `10-Q`, `8-K`, `DEF 14A`, `S-1` |
+| `start_date` | No | — | Inclusive lower bound on filing date. Accepts `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`. Expands to the start of the period |
+| `end_date` | No | — | Inclusive upper bound on filing date. Accepts `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`. Expands to the end of the period |
+| `page` | No | `1` | Page number (1-based) |
+| `limit` | No | `20` | Results per page (1–100) |
+
+If you provide both `start_date` and `end_date`, the expanded `start_date` must be on or before the expanded `end_date`. If not, the API returns a `422 validation_error`.
+
+## Response shape
+
+Each item in `results` is a `FilingSummary`:
+
+| Field | Type | Description |
+|---|---|---|
+| `accession_number` | string | Unique filing identifier with dashes, e.g. `0000320193-23-000106` |
+| `form_type` | string | SEC form code |
+| `filed_at` | string | Date the filing was submitted to EDGAR, `YYYY-MM-DD` |
+| `period_of_report` | string | Reporting period end date, `YYYY-MM-DD` |
+| `primary_document` | string | Filename of the main filing document |
+
+<Note>
+  Results are ordered most-recent-first, exactly as returned by SEC EDGAR. The `filed_at` field reflects the SEC submission date, not the period the filing covers. A 10-K for fiscal year 2022 may have a `filed_at` date in late 2022 or early 2023.
+</Note>

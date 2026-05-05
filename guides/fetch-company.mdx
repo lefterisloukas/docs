@@ -1,0 +1,96 @@
+---
+title: "Fetch company profiles by ticker or CIK in Easy Edgar"
+description: "Look up any SEC-registered company by ticker symbol or CIK number and retrieve its full profile, tickers, SIC code, and address data."
+---
+
+The `GET /v1/companies/{identifier}` endpoint returns everything Easy Edgar knows about a company from the SEC EDGAR submissions database: its legal name, all registered tickers, SIC classification, fiscal year end, state of incorporation, and both business and mailing addresses. You can identify a company by either its ticker symbol or its CIK number — the API normalizes both automatically.
+
+<Steps>
+  <Step title="Choose your identifier">
+    You can look up a company using either:
+
+    - **Ticker symbol** — e.g. `AAPL`, `MSFT`, `TSLA`. Tickers are case-insensitive, so `aapl` and `AAPL` resolve to the same company.
+    - **CIK number** — the SEC's Central Index Key. You can pass it padded (`0000320193`) or unpadded (`320193`). The API accepts both.
+
+    If you only have a company name, search the [SEC EDGAR full-text search](https://efts.sec.gov/LATEST/search-index?q=%22apple+inc%22&dateRange=custom&startdt=2020-01-01&enddt=2020-12-31) to find the ticker or CIK first.
+  </Step>
+
+  <Step title="Make the GET request">
+    Pass your identifier as the path parameter:
+
+    ```bash
+    curl https://api.easy-edgar.com/v1/companies/AAPL \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+
+    The request is identical whether you use a ticker or a CIK:
+
+    ```bash
+    curl https://api.easy-edgar.com/v1/companies/0000320193 \
+      -H "Authorization: Bearer hv_live_your_key_here"
+    ```
+  </Step>
+
+  <Step title="Inspect the response">
+    A successful request returns a `CompanyResponse` object:
+
+    ```json
+    {
+      "cik": "0000320193",
+      "name": "Apple Inc.",
+      "tickers": ["AAPL"],
+      "sic_code": "3571",
+      "industry": "Electronic Computers",
+      "fiscal_year_end": "0928",
+      "state_of_incorporation": "CA",
+      "business_address": {
+        "street": "One Apple Park Way",
+        "city": "Cupertino",
+        "state": "CA",
+        "zip_code": "95014"
+      },
+      "mailing_address": null
+    }
+    ```
+  </Step>
+</Steps>
+
+## Response fields
+
+| Field | Type | Description |
+|---|---|---|
+| `cik` | string | 10-digit zero-padded Central Index Key, e.g. `"0000320193"` |
+| `name` | string | Legal name as registered with the SEC |
+| `tickers` | string[] | All ticker symbols associated with the company |
+| `sic_code` | string | SEC Standard Industrial Classification code |
+| `industry` | string | Human-readable SIC description |
+| `fiscal_year_end` | string | Fiscal year end date in `MMDD` format, e.g. `"0928"` = September 28 |
+| `state_of_incorporation` | string | Two-letter state code; may be empty for foreign filers |
+| `business_address` | object \| null | Physical operating address |
+| `mailing_address` | object \| null | Mailing address; `null` when same as business address |
+
+Both address objects contain `street`, `city`, `state`, and `zip_code` fields (strings, defaulting to empty string when not on file with the SEC).
+
+<Tip>
+  The API normalizes CIK inputs before making any upstream request. You can pass `320193`, `0000320193`, or `AAPL` — they all resolve to the same company. The `cik` field in the response is always the full 10-digit zero-padded string.
+</Tip>
+
+## Error: company not found
+
+If the identifier doesn't match any SEC-registered company, the API returns a `404`:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Company not found for identifier: ZZZZ",
+    "details": {}
+  }
+}
+```
+
+This can happen when:
+
+- The ticker hasn't been registered with the SEC (e.g. OTC-only securities with no EDGAR filings)
+- The CIK doesn't exist in the EDGAR database
+- The ticker was delisted and the company was dissolved (use the CIK for historical lookups)

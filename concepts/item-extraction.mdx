@@ -1,0 +1,154 @@
+---
+title: "Item-level text extraction from 10-K, 10-Q, and 8-K"
+description: "Easy Edgar extracts named sections from 10-K, 10-Q, and 8-K filings back to 1993, including pre-XBRL historical filings and plain-text formats."
+---
+
+Item extraction is Easy Edgar's core differentiator. SEC filings are structured documents divided into named sections — called items — defined by SEC rules. Easy Edgar lets you retrieve the text of any individual item from a supported filing with a single API call, without downloading or parsing the raw filing yourself. This works for modern HTML filings and for the messy plain-text historical filings going back to 1993 that most other APIs skip.
+
+## What items are
+
+Items are the named, numbered sections within an SEC filing. The SEC's filing rules specify which items must appear in each form type. For example, a 10-K must include Item 1 (Business), Item 1A (Risk Factors), Item 7 (Management's Discussion and Analysis), and so on. An 8-K reports a specific material event under items like Item 1.01 (Entry into a Material Definitive Agreement) or Item 5.02 (Departure of Directors or Principal Officers).
+
+Easy Edgar extracts each item as a standalone text block with metadata — no surrounding boilerplate, no HTML markup, no adjacent sections.
+
+## Supported form types and item counts
+
+| Form type | Items supported | Coverage |
+|---|---|---|
+| `10-K` | 24 items | Annual reports back to 1993 |
+| `10-Q` | 12 items | Quarterly reports back to 1993 |
+| `8-K` | 30+ items | Current reports back to 1993 |
+
+<Note>
+  8-K filings filed before August 23, 2004 used a different, obsolete item numbering scheme. Easy Edgar handles this automatically — you do not need to adjust your requests based on filing date.
+</Note>
+
+## Item key format
+
+Every item is identified by a **snake_case key**. The key format follows the form type's structure:
+
+<AccordionGroup>
+  <Accordion title="10-K item keys">
+    10-K items use a simple `item_N` or `item_Na` pattern, plus `signature` for the signature block.
+
+    | Key | Title |
+    |---|---|
+    | `item_1` | Business |
+    | `item_1a` | Risk Factors |
+    | `item_1b` | Unresolved Staff Comments |
+    | `item_1c` | Cybersecurity |
+    | `item_2` | Properties |
+    | `item_3` | Legal Proceedings |
+    | `item_7` | Management's Discussion and Analysis |
+    | `item_7a` | Quantitative and Qualitative Disclosures About Market Risk |
+    | `item_9a` | Controls and Procedures |
+    | `item_15` | Exhibits and Financial Statement Schedules |
+    | `signature` | Signature block |
+
+    The full 24-item list is available from `GET /v1/filings/item_types?form_type=10-K`.
+  </Accordion>
+
+  <Accordion title="10-Q item keys">
+    10-Q items are organized into two parts, reflected in the key: `part_1_item_N` for Part I and `part_2_item_N` for Part II.
+
+    | Key | Title |
+    |---|---|
+    | `part_1_item_1` | Financial Statements |
+    | `part_1_item_2` | Management's Discussion and Analysis |
+    | `part_1_item_3` | Quantitative and Qualitative Disclosures About Market Risk |
+    | `part_1_item_4` | Controls and Procedures |
+    | `part_2_item_1` | Legal Proceedings |
+    | `part_2_item_1a` | Risk Factors |
+    | `part_2_item_2` | Unregistered Sales of Equity Securities |
+    | `part_2_item_6` | Exhibits |
+    | `signature` | Signature block |
+
+    The full 12-item list is available from `GET /v1/filings/item_types?form_type=10-Q`.
+  </Accordion>
+
+  <Accordion title="8-K item keys">
+    8-K items encode both the section and subsection number, separated by underscores: `item_N_NN`.
+
+    | Key | Title |
+    |---|---|
+    | `item_1_01` | Entry into a Material Definitive Agreement |
+    | `item_1_02` | Termination of a Material Definitive Agreement |
+    | `item_2_01` | Completion of Acquisition or Disposition of Assets |
+    | `item_2_02` | Results of Operations and Financial Condition |
+    | `item_5_02` | Departure of Directors or Principal Officers |
+    | `item_5_07` | Submission of Matters to a Vote of Security Holders |
+    | `item_7_01` | Regulation FD Disclosure |
+    | `item_8_01` | Other Events |
+    | `item_9_01` | Financial Statements and Exhibits |
+    | `signature` | Signature block |
+
+    The full 30+ item list is available from `GET /v1/filings/item_types?form_type=8-K`.
+  </Accordion>
+</AccordionGroup>
+
+## Discovering valid item keys
+
+Not every item key is valid for every filing. A filing may omit items that are not applicable, and some items only exist in filings after a certain date — for example, `item_1c` (Cybersecurity) was added to the 10-K form in 2023 and will not appear in earlier filings.
+
+Use the item types endpoint to get the complete list of defined keys for a form type:
+
+```bash
+GET /v1/filings/item_types?form_type=10-K
+GET /v1/filings/item_types?form_type=10-Q
+GET /v1/filings/item_types?form_type=8-K
+```
+
+This returns all possible keys for that form — it does not tell you which items are present in a specific filing. To see what was actually extracted from a particular filing, call the items endpoint directly:
+
+```bash
+GET /v1/filings/0000320193-23-000106/items
+```
+
+## Extracting a specific item
+
+Pass the item key as the last path segment:
+
+```bash
+# Risk Factors from Apple's 2023 10-K
+GET /v1/filings/0000320193-23-000106/items/item_1a
+
+# MD&A from a 10-Q
+GET /v1/filings/0000320193-23-000064/items/part_1_item_2
+
+# Results of Operations from an 8-K
+GET /v1/filings/0000320193-24-000123/items/item_2_02
+```
+
+## ItemResponse fields
+
+A successful extraction returns an `ItemResponse` object:
+
+| Field | Type | Description |
+|---|---|---|
+| `item_key` | string | The snake_case key you requested |
+| `title` | string | Human-readable section title |
+| `text` | string | Cleaned extracted text of the section |
+| `char_range` | int[2] | `[start, end]` character offsets in the source document |
+| `word_count` | int | Word count of the extracted text |
+| `extraction_method` | string | `"edgartools"` or `"edgar-crawler"` |
+
+## Sample response
+
+```json
+{
+  "item_key": "item_1a",
+  "title": "Risk Factors",
+  "text": "A discussion of the risk factors affecting our business...",
+  "char_range": [4521, 89203],
+  "word_count": 12450,
+  "extraction_method": "edgartools"
+}
+```
+
+<Note>
+  If a filing exists but does not contain the requested item, the API returns `404` with error code `item_not_found`. This is expected for items that are not applicable to a particular filing — for example, requesting `item_1c` on a 10-K filed before 2023. Handle this case in your integration by checking the error code rather than treating it as a missing filing.
+</Note>
+
+## Historical coverage
+
+Easy Edgar extracts items from filings back to 1993, including the pre-XBRL era (roughly pre-2009) where filings were submitted as plain text or early HTML. Modern filings (HTML and iXBRL) and legacy plain-text filings are both supported — the appropriate extraction method is selected automatically based on the filing's format and date.

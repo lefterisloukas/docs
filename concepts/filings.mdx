@@ -1,0 +1,122 @@
+---
+title: "Filings, accession numbers, and form types explained"
+description: "A filing is a document a company submits to the SEC. Learn about accession numbers, form types, filing dates, and how to navigate filing documents."
+---
+
+A filing is a document or package of documents that a company submits to the SEC through EDGAR. Every 10-K annual report, 10-Q quarterly update, 8-K current event notice, and hundreds of other form types are filings. Easy Edgar gives you a clean API surface to list, retrieve, and navigate filings for any company — and for supported form types, to extract the text of individual named sections.
+
+## Accession numbers
+
+Every filing in EDGAR is permanently identified by an **accession number** — a unique, immutable string assigned by the SEC when the filing is accepted. Easy Edgar always represents accession numbers **with dashes**, in the format `XXXXXXXXXX-XX-XXXXXX`.
+
+```
+0000320193-23-000106
+└────────── └─ └────
+  Filer CIK  Year  Sequence
+```
+
+Pass accession numbers with dashes in all API calls:
+
+```bash
+GET /v1/filings/0000320193-23-000106
+```
+
+<Warning>
+  Accession numbers without dashes (e.g. `000032019323000106`) are not accepted. Always include the dashes.
+</Warning>
+
+## Common form types
+
+The SEC defines hundreds of form types. The most common ones you will encounter are:
+
+| Form type | Purpose |
+|---|---|
+| `10-K` | Annual report — comprehensive overview of business, financials, and risks |
+| `10-Q` | Quarterly report — financial update for Q1, Q2, or Q3 |
+| `8-K` | Current report — material events disclosed within four business days |
+
+Easy Edgar supports item-level text extraction for `10-K`, `10-Q`, and `8-K` filings. Other form types (e.g. `DEF 14A`, `S-1`, `20-F`) are retrievable as filings and documents but do not support item extraction.
+
+## Filing date vs. period of report
+
+Two dates appear on every filing and they mean different things:
+
+- **`filed_at`** — the date the company submitted the filing to the SEC. This is the date used by all date-range filters (`start_date`, `end_date`) on the filings list endpoint.
+- **`period_of_report`** — the last day of the period the filing covers. A 10-K filed on `2023-11-03` may cover the fiscal year ending `2023-09-30`.
+
+When you filter filings by date, you are filtering by **filing date**, not by the period covered.
+
+## FilingSummary fields
+
+The paginated filings list returns `FilingSummary` objects:
+
+| Field | Type | Description |
+|---|---|---|
+| `accession_number` | string | Accession number with dashes |
+| `form_type` | string | SEC form code (e.g. `"10-K"`) |
+| `filed_at` | string | Filing submission date, `YYYY-MM-DD` |
+| `period_of_report` | string | Period covered by the filing, `YYYY-MM-DD` |
+| `primary_document` | string | Filename of the main filing document |
+
+## Sample FilingSummary
+
+```json
+{
+  "accession_number": "0000320193-23-000106",
+  "form_type": "10-K",
+  "filed_at": "2023-11-03",
+  "period_of_report": "2023-09-30",
+  "primary_document": "aapl-20230930.htm"
+}
+```
+
+## FilingDetail — fetching a single filing
+
+When you fetch a filing by accession number (`GET /v1/filings/{accession_number}`), you receive a `FilingDetail` response. This extends `FilingSummary` with additional context:
+
+| Field | Type | Description |
+|---|---|---|
+| `cik` | string | 10-digit zero-padded CIK of the filer |
+| `company_name` | string | Legal name of the filing company |
+| `documents_url` | string | URL to list all documents in this filing |
+| `items_url` | string \| null | URL to extract items; `null` for non-10-K/10-Q/8-K forms |
+
+<Note>
+  `items_url` is `null` for any form type that does not support item extraction. Check this field before attempting to call the items endpoint, or use `GET /v1/forms/supported` to confirm extraction support for a given form type.
+</Note>
+
+## Documents within a filing
+
+A single filing typically contains multiple files: the primary document, exhibits, XBRL data files, and supporting materials. Retrieve the full list with:
+
+```bash
+GET /v1/filings/0000320193-23-000106/documents
+```
+
+Each `DocumentSummary` in the results includes a `document_id` (the filename), a `description`, a `content_type`, and a `sequence` number. Fetch any individual document's raw content by passing its `document_id`:
+
+```bash
+# Returns the raw HTML of the primary document
+GET /v1/filings/0000320193-23-000106/documents/aapl-20230930.htm
+
+# Strip HTML and return plain text
+GET /v1/filings/0000320193-23-000106/documents/aapl-20230930.htm?format=text
+```
+
+<Tip>
+  For structured text from specific sections — like Risk Factors or MD&A — use the [item extraction endpoints](/concepts/item-extraction) instead of fetching the raw document and parsing it yourself.
+</Tip>
+
+## Listing filings for a company
+
+Use the company filings endpoint to browse filings. You can filter by form type and date range:
+
+```bash
+# Apple's 10-K filings, most recent first
+GET /v1/companies/AAPL/filings?form_type=10-K&limit=10
+
+# 8-K filings filed in 2023
+GET /v1/companies/AAPL/filings?form_type=8-K&start_date=2023&end_date=2023
+```
+
+Results are ordered most-recent-first as returned by SEC EDGAR and follow the standard paginated envelope: `{ "results": [...], "total": N, "page": N, "pages": N }`.

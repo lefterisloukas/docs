@@ -1,0 +1,103 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "luma",
+  "name": "Easy Edgar",
+  "colors": {
+    "primary": "#d3fa63",
+    "light": "#8c9454",
+    "dark": "#2e1e3c"
+  },
+  "favicon": "https://media.brand.dev/6f9619a7-93dc-47b4-983b-b41b42798fda.png",
+  "logo": {
+    "light": "https://media.brand.dev/5a53e869-cde5-4b4c-a503-083950175d4c.svg",
+    "dark": "https://media.brand.dev/5a53e869-cde5-4b4c-a503-083950175d4c.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/lefterisloukas/easy-edgar"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/companies",
+              "concepts/filings",
+              "concepts/item-extraction"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/fetch-company",
+              "guides/search-filings",
+              "guides/extract-items",
+              "guides/pagination"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/conventions",
+              "reference/errors",
+              "reference/rate-limits"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview"
+            ]
+          },
+          {
+            "group": "Companies",
+            "pages": [
+              "api/companies/get-company",
+              "api/companies/list-filings"
+            ]
+          },
+          {
+            "group": "Filings",
+            "pages": [
+              "api/filings/get-filing",
+              "api/filings/list-documents",
+              "api/filings/get-document"
+            ]
+          },
+          {
+            "group": "Item Extraction",
+            "pages": [
+              "api/items/list-items",
+              "api/items/get-item"
+            ]
+          },
+          {
+            "group": "Discovery",
+            "pages": [
+              "api/discovery/supported-forms",
+              "api/discovery/item-types"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

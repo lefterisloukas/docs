@@ -1,0 +1,125 @@
+---
+title: "GET /v1/filings/{accession_number}/items/{item_key}"
+sidebarTitle: "Get Item"
+description: "Extract a single named item section from a 10-K, 10-Q, or 8-K filing by its item key. Returns the full text and position metadata."
+---
+
+Use this endpoint to extract a specific named section from a supported SEC filing by its snake_case item key. This is the most efficient path when you only need one section — for example, pulling Risk Factors or MD&A without fetching the entire filing. The response includes the cleaned text, character offsets in the source document, word count, and the extraction method used.
+
+## Endpoint
+
+```
+GET /v1/filings/{accession_number}/items/{item_key}
+```
+
+## Authentication
+
+All requests require a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+A missing or invalid key returns `401 unauthorized`.
+
+## Path parameters
+
+<ParamField path="accession_number" type="string" required>
+  The SEC accession number with dashes, in the format `XXXXXXXXXX-XX-XXXXXX`. For example, `0000320193-23-000106`.
+</ParamField>
+
+<ParamField path="item_key" type="string" required>
+  The normalized snake_case key identifying the section to extract. The valid keys depend on the filing's form type:
+
+  | Form type | Example keys |
+  |-----------|-------------|
+  | 10-K | `item_1`, `item_1a`, `item_7`, `item_7a`, `signature` |
+  | 10-Q | `part_1_item_1`, `part_1_item_2`, `part_2_item_1a`, `signature` |
+  | 8-K | `item_1_01`, `item_2_02`, `item_5_02`, `item_8_01` |
+</ParamField>
+
+## Query parameters
+
+<ParamField query="parser" type="string">
+  Forces a specific extraction engine. Accepts `edgartools` or `edgar-crawler`. Omit this parameter to use automatic date-based routing, which selects the most appropriate parser based on the filing date. Pass an unsupported value to receive a `422 validation_error`.
+</ParamField>
+
+## Response
+
+A successful request returns an `ItemResponse` object with a `200` status.
+
+<ResponseField name="item_key" type="string">
+  The normalized snake_case key for the extracted item (e.g. `item_1a`).
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The section title as it appears in the form (e.g. `Risk Factors`).
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  The cleaned extracted text of the item section.
+</ResponseField>
+
+<ResponseField name="char_range" type="integer[]">
+  A two-element array `[start, end]` representing the character offsets of this item in the source document.
+</ResponseField>
+
+<ResponseField name="word_count" type="integer">
+  The number of words in the extracted text.
+</ResponseField>
+
+<ResponseField name="extraction_method" type="string">
+  The parser used to extract this item. One of `"edgartools"` or `"edgar-crawler"`.
+</ResponseField>
+
+<Tip>
+  Not sure which keys are valid for a given form type? Call `GET /v1/filings/item_types?form_type=10-K` (or `10-Q` / `8-K`) to get the full list of item keys and their titles for that form.
+</Tip>
+
+## Examples
+
+The following example fetches Item 1A (Risk Factors) from Apple's fiscal year 2023 10-K filing:
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url "https://api.easy-edgar.com/v1/filings/0000320193-23-000106/items/item_1a" \
+  --header "Authorization: Bearer hv_live_<your_key>"
+```
+
+</CodeGroup>
+
+```json 200
+{
+  "item_key": "item_1a",
+  "title": "Risk Factors",
+  "text": "The following risk factors could materially affect our business, financial condition, and operating results. This information should be considered carefully, together with other information in this Annual Report on Form 10-K...",
+  "char_range": [18433, 89203],
+  "word_count": 12450,
+  "extraction_method": "edgartools"
+}
+```
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `400` | `unsupported_form_type` | Item extraction is not supported for this filing's form type. Only 10-K, 10-Q, and 8-K are supported. |
+| `401` | `unauthorized` | Missing or invalid Bearer token. |
+| `404` | `not_found` | No filing found for the given accession number. |
+| `404` | `item_not_found` | The filing exists but does not contain the requested item key. This can happen for items introduced in later SEC rule amendments — for example, `item_1c` (Cybersecurity) is absent from 10-K filings dated before 2023. |
+| `422` | `validation_error` | The `parser` value is not recognized, or the accession number is malformed. |
+| `502` | `upstream_error` | The SEC EDGAR archive could not be reached or returned an error. |
+
+All error responses use the standard envelope:
+
+```json
+{
+  "error": {
+    "code": "item_not_found",
+    "message": "Item 'item_1c' not found in this filing.",
+    "details": {}
+  }
+}
+```

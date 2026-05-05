@@ -1,0 +1,114 @@
+---
+title: "Get filing metadata — GET /v1/filings/{accession_number}"
+description: "Retrieve metadata for a specific SEC filing by accession number. Returns form type, dates, company info, and links to documents and items."
+---
+
+Use this endpoint to fetch metadata for any SEC filing when you already know its accession number. The response includes the form type, filing and reporting dates, the primary document filename, company identifiers, and convenience URLs pointing to the filing's documents and — for supported form types — its extracted items.
+
+## Endpoint
+
+```
+GET /v1/filings/{accession_number}
+```
+
+## Authentication
+
+All requests require a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer hv_live_<your_key>
+```
+
+A missing or invalid key returns `401 unauthorized`.
+
+## Path parameters
+
+<ParamField path="accession_number" type="string" required>
+  The SEC accession number with dashes, in the format `XXXXXXXXXX-XX-XXXXXX`. For example, `0000320193-23-000106`.
+</ParamField>
+
+## Response
+
+A successful request returns a `FilingDetail` object with a `200` status.
+
+<ResponseField name="accession_number" type="string">
+  The filing's accession number with dashes (e.g. `0000320193-23-000106`).
+</ResponseField>
+
+<ResponseField name="form_type" type="string">
+  The SEC form type (e.g. `10-K`, `10-Q`, `8-K`, `DEF 14A`).
+</ResponseField>
+
+<ResponseField name="filed_at" type="string">
+  The date the filing was submitted to the SEC, in `YYYY-MM-DD` format.
+</ResponseField>
+
+<ResponseField name="period_of_report" type="string">
+  The period covered by the filing, in `YYYY-MM-DD` format.
+</ResponseField>
+
+<ResponseField name="primary_document" type="string">
+  The filename of the primary document in the filing (e.g. `aapl-20230930.htm`).
+</ResponseField>
+
+<ResponseField name="cik" type="string">
+  The company's CIK as a 10-digit zero-padded string (e.g. `0000320193`).
+</ResponseField>
+
+<ResponseField name="company_name" type="string">
+  The company's legal name as registered with the SEC.
+</ResponseField>
+
+<ResponseField name="documents_url" type="string">
+  Absolute URL to `GET /v1/filings/{accession_number}/documents`, listing all documents and exhibits in this filing.
+</ResponseField>
+
+<ResponseField name="items_url" type="string | null">
+  Absolute URL to `GET /v1/filings/{accession_number}/items` for item-level text extraction. Present only for 10-K, 10-Q, and 8-K filings; `null` for all other form types.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl --request GET \
+  --url "https://api.easy-edgar.com/v1/filings/0000320193-23-000106" \
+  --header "Authorization: Bearer hv_live_<your_key>"
+```
+
+</CodeGroup>
+
+```json 200
+{
+  "accession_number": "0000320193-23-000106",
+  "form_type": "10-K",
+  "filed_at": "2023-11-03",
+  "period_of_report": "2023-09-30",
+  "primary_document": "aapl-20230930.htm",
+  "cik": "0000320193",
+  "company_name": "Apple Inc.",
+  "documents_url": "/v1/filings/0000320193-23-000106/documents",
+  "items_url": "/v1/filings/0000320193-23-000106/items"
+}
+```
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401` | `unauthorized` | Missing or invalid Bearer token. |
+| `404` | `not_found` | No filing found for the given accession number. |
+| `422` | `validation_error` | The accession number is malformed or otherwise invalid. |
+
+All error responses use the standard envelope:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Filing not found.",
+    "details": {}
+  }
+}
+```
